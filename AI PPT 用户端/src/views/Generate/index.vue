@@ -43,6 +43,7 @@
             :state="sPreviewState"
             :progress="sProgress"
             :progressText="sProgressText"
+            :currentStep="sCurrentStep"
             :stepTitle="sStepTitle"
             :stepDetail="sStepDetail"
             :elapsedSec="sElapsed"
@@ -151,6 +152,7 @@ const uploadRef = ref(null)
 const uploadedImgs = ref<File[]>([])
 
 // 管线进度状态
+const sCurrentStep = ref(0)  // 1-7
 const sStepTitle = ref('')
 const sStepDetail = ref('')
 const sElapsed = ref(0)
@@ -172,12 +174,26 @@ const sPreviewState = computed(() => {
 
 function onImgUpdate(files: File[]) { uploadedImgs.value = files }
 
-// SSE step → 进度百分比映射
-const STEP_PROGRESS: Record<string, number> = {
-  'step1': 5,
-  '0/5': 12, '1/5': 25, '2/5': 40,
-  '3/5': 55, '4/5': 70, '5/5': 82,
-  'extract': 90, 'pptx': 95, 'diag': 88,
+// ── 7 步流程定义 ──
+// Step 1: 生成原图 (POST /step1)
+// Step 2: 背景分离 (SSE step 0/5 + 1/5)
+// Step 3: 前景生成 (SSE step 2/5)
+// Step 4: 元素分离 (SSE step 3/5)
+// Step 5: 文字提取 (SSE step 4/5)
+// Step 6: 形状分离 (SSE step 5/5)
+// Step 7: PPTX 组装 (SSE step extract + pptx)
+
+const STEP_MAP: Record<string, { step: number; progress: number }> = {
+  'step1':   { step: 1, progress: 14 },
+  '0/5':     { step: 2, progress: 20 },
+  '1/5':     { step: 2, progress: 28 },
+  '2/5':     { step: 3, progress: 42 },
+  '3/5':     { step: 4, progress: 56 },
+  '4/5':     { step: 5, progress: 70 },
+  '5/5':     { step: 6, progress: 84 },
+  'diag':    { step: 6, progress: 86 },
+  'extract': { step: 7, progress: 90 },
+  'pptx':    { step: 7, progress: 95 },
 }
 
 // 图层名称映射
@@ -195,10 +211,11 @@ async function handleSingleGenerate() {
   if (!prompt.value) return
   sGenerating.value = true
   sProgress.value = 0
+  sCurrentStep.value = 0
   sGenerated.value = false
   sError.value = ''
-  sStepTitle.value = ''
-  sStepDetail.value = ''
+  sStepTitle.value = '🚀 正在连接 Layer Studio 引擎...'
+  sStepDetail.value = '整个流程大约需要 5-7 分钟'
   sElapsed.value = 0
   sLayers.value = []
   sLogs.value = []
@@ -206,7 +223,7 @@ async function handleSingleGenerate() {
   sPptxSizeKb.value = 0
   sOriginalImage.value = ''
 
-  // 计时器
+  // 计时器 — 每秒更新
   const startTime = Date.now()
   elapsedTimer = setInterval(() => {
     sElapsed.value = Math.floor((Date.now() - startTime) / 1000)
@@ -214,28 +231,26 @@ async function handleSingleGenerate() {
 
   try {
     const result = await layerApi.runFullPipeline(prompt.value, (event) => {
-      // 更新进度百分比
-      if (event.step && STEP_PROGRESS[event.step] !== undefined) {
-        const target = STEP_PROGRESS[event.step]
-        if (target > sProgress.value) {
-          sProgress.value = target
-        }
+      // ── 步骤 + 进度映射 ──
+      if (event.step && STEP_MAP[event.step]) {
+        const { step, progress } = STEP_MAP[event.step]
+        if (step > sCurrentStep.value) sCurrentStep.value = step
+        if (progress > sProgress.value) sProgress.value = progress
       }
 
-      // 更新步骤信息
+      // ── 步骤标题 ──
       if (event.type === 'phase') {
         sStepTitle.value = event.message || ''
         sStepDetail.value = event.detail || ''
       }
 
-      // 记录日志
+      // ── 日志 ──
       if (event.message) {
         sLogs.value.push(event.message)
       }
 
-      // 记录已完成图层
+      // ── 图层完成 ──
       if (event.type === 'layer_done' && event.layer && event.url) {
-        // 记录原图
         if (event.layer === 'original') {
           sOriginalImage.value = event.url
         }
@@ -248,6 +263,7 @@ async function handleSingleGenerate() {
 
     // 管线完成
     sProgress.value = 100
+    sCurrentStep.value = 7
     sPptxUrl.value = result.pptxFile
     sPptxSizeKb.value = result.sizeKb
     if (result.originalImage) sOriginalImage.value = result.originalImage
@@ -268,7 +284,6 @@ async function handleSingleGenerate() {
 }
 
 function handleSingleDownload() {
-  // PPTX 由 Layer Studio 生成，直接通过 URL 下载
   if (sPptxUrl.value) {
     const a = document.createElement('a')
     a.href = sPptxUrl.value
@@ -279,7 +294,7 @@ function handleSingleDownload() {
 
 function resetSingle() {
   sGenerated.value = false; prompt.value = ''; sError.value = ''
-  sProgress.value = 0; sStepTitle.value = ''; sStepDetail.value = ''
+  sProgress.value = 0; sCurrentStep.value = 0; sStepTitle.value = ''; sStepDetail.value = ''
   sElapsed.value = 0; sLayers.value = []; sLogs.value = []
   sPptxUrl.value = ''; sPptxSizeKb.value = 0; sOriginalImage.value = ''
   if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null }
