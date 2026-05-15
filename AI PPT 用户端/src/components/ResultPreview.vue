@@ -96,7 +96,7 @@ defineExpose({ current })
 
 <style scoped>
 .result-preview {
-  min-height: 480px; display: flex;
+  flex: 1; display: flex;
   align-items: center; justify-content: center;
   background: var(--bg-secondary); padding: var(--space-8);
   border: 1px solid var(--border-color); border-radius: var(--radius-lg);

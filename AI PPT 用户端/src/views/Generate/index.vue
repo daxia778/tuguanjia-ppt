@@ -378,9 +378,9 @@ function clearFullPages() {
 .mode-tab.active { background: var(--bg-secondary); border-color: var(--brand-orange); color: var(--brand-orange); }
 
 /* ─── Single Mode ─── */
-.generate-layout { display: flex; gap: var(--space-8); align-items: flex-start; }
+.generate-layout { display: flex; gap: var(--space-8); align-items: stretch; }
 .input-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-5); }
-.preview-col { flex: 1; min-width: 0; position: sticky; top: calc(var(--header-height) + var(--space-6)); }
+.preview-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .input-card { padding: var(--space-6); }
 .card-label { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-3); }
 .required { color: #ef4444; }
