@@ -176,7 +176,7 @@ onUnmounted(() => {
 .page-header h1 { font-size: var(--text-4xl); margin-bottom: var(--space-2); letter-spacing: -1px; }
 .page-header p { font-size: var(--text-lg); color: var(--text-secondary); }
 
-.history-list { display: flex; flex-direction: column; gap: var(--space-4); max-width: 900px; }
+.history-list { display: flex; flex-direction: column; gap: var(--space-4); max-width: 900px; margin: 0 auto; }
 
 .history-item {
   display: flex; align-items: center; gap: var(--space-6); padding: var(--space-4) var(--space-6);
