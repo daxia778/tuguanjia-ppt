@@ -84,6 +84,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { generatePptx } from '@/utils/pptx'
+import { uploadFiles } from '@/api/upload'
+import * as pptApi from '@/api/ppt'
 import gsap from 'gsap'
 import UploadZone from '@/components/UploadZone.vue'
 import ResultPreview from '@/components/ResultPreview.vue'
@@ -147,18 +149,81 @@ async function handleSingleGenerate() {
   if (!prompt.value) return
   sGenerating.value = true; sProgress.value = 0; sGenerated.value = false; sError.value = ''; sTask.value = null
   if (sPreviewRef.value) sPreviewRef.value.current = 0
-  gsap.to(sProgress, { value: 100, duration: 3, ease: 'power1.inOut' })
-  await new Promise(r => setTimeout(r, 2500))
 
-  sTask.value = {
-    slides: { title: prompt.value.slice(0,30), slides: [{
-      title: prompt.value.slice(0,30),
-      content: ['AI 驱动的智能内容生成','精准排版与配色优化','一键导出原生 PPTX 格式','支持多种视觉主题风格'],
-      notes: '由 AI 自动生成'
-    }]},
-    pageCount: 1, style: style.value
+  try {
+    // ── Step 1: 上传参考图片 ──
+    let imageUrls: string[] = []
+    if (uploadedImgs.value.length) {
+      gsap.to(sProgress, { value: 30, duration: 1.5, ease: 'power1.out' })
+      imageUrls = await uploadFiles(uploadedImgs.value, (_, p) => {
+        sProgress.value = Math.min(30, p * 0.3)
+      })
+    }
+
+    // ── Step 2: 调用后端创建任务 ──
+    gsap.to(sProgress, { value: 50, duration: 1, ease: 'power1.out' })
+    let taskNo: string = ''
+    let isMock = false
+
+    try {
+      const res = await pptApi.createTask({
+        title: prompt.value.slice(0, 60),
+        description: prompt.value,
+        style: style.value,
+        pages: 1,
+        // @ts-ignore — 扩展参数
+        imageUrls,
+      })
+      taskNo = (res as any)?.taskNo || (res as any)
+    } catch {
+      console.warn('[Mock] 后端不可用，使用 Mock 生成')
+      isMock = true
+    }
+
+    if (isMock) {
+      // ── Mock 生成 ──
+      gsap.to(sProgress, { value: 100, duration: 2, ease: 'power1.inOut' })
+      await new Promise(r => setTimeout(r, 2000))
+      sTask.value = {
+        slides: { title: prompt.value.slice(0,30), slides: [{
+          title: prompt.value.slice(0,30),
+          content: ['AI 驱动的智能内容生成','精准排版与配色优化','一键导出原生 PPTX 格式'],
+          notes: '由 AI 自动生成',
+          imageUrl: imageUrls[0] || null,
+        }]},
+        pageCount: 1, style: style.value
+      }
+    } else {
+      // ── Step 3: 轮询任务状态 ──
+      gsap.to(sProgress, { value: 90, duration: 8, ease: 'power1.inOut' })
+      let task: pptApi.TaskVO | null = null
+      for (let i = 0; i < 60; i++) { // 最多等 60s
+        await new Promise(r => setTimeout(r, 1000))
+        task = await pptApi.getTaskStatus(taskNo)
+        if (task.status === 2) break // 成功
+        if (task.status === 3) throw new Error(task.errorMsg || '生成失败')
+      }
+      if (!task || task.status !== 2) throw new Error('生成超时，请稍后在历史记录中查看')
+
+      gsap.to(sProgress, { value: 100, duration: 0.3 })
+      sTask.value = {
+        slides: task.slides || { title: prompt.value.slice(0,30), slides: [{ title: prompt.value.slice(0,30), content: ['生成完成'], imageUrl: imageUrls[0] || null }] },
+        pageCount: task.pageCount, style: style.value
+      }
+    }
+
+    // ── Step 4: 扣减积分（前端显示） ──
+    if (userStore.userInfo) {
+      userStore.userInfo.points = Math.max(0, (userStore.userInfo.points || 0) - 10)
+    }
+
+    sGenerated.value = true
+  } catch (err: any) {
+    sError.value = err?.message || '生成失败，请重试'
+    console.error('[Generate] 生成失败:', err)
+  } finally {
+    sGenerating.value = false
   }
-  sGenerating.value = false; sGenerated.value = true
 }
 
 function handleSingleDownload() {
@@ -218,15 +283,54 @@ async function onFileUpload(f: File | null) {
   if (!f) return
   fullFileName.value = f.name
   fullExtracting.value = true
-  await new Promise(r => setTimeout(r, 2000))
-  const colors = ['#e0e7ff','#fce7f3','#ecfdf5','#fef3c7','#f1f5f9']
-  fullPages.value = Array.from({ length: 5 }, (_, i) => ({
-    previewUrl: makeMockSvg(`第 ${i+1} 页`, `从 ${f.name} 提取`, colors[i]),
-    annotation: '',
-    outputUrl: '',
-  }))
-  fullExtracting.value = false
-  fullGenerated.value = false
+
+  try {
+    // 上传文件到后端
+    const { uploadFile } = await import('@/api/upload')
+    const fileUrl = await uploadFile(f)
+    console.log('[Full] 文件已上传:', fileUrl)
+
+    const colors = ['#e0e7ff','#fce7f3','#ecfdf5','#fef3c7','#f1f5f9']
+
+    // 尝试调用后端 PPTX 解析接口
+    let pages: any[] = []
+    try {
+      const res: any = await (await import('@/api/request')).default.post('/ppt/parse', { fileUrl })
+      if (Array.isArray(res?.pages)) {
+        pages = res.pages.map((p: any, i: number) => ({
+          previewUrl: p.imageUrl || makeMockSvg(p.title || `第 ${i+1} 页`, '从文件提取', colors[i % colors.length]),
+          annotation: p.hint || '',
+          outputUrl: '',
+        }))
+      }
+    } catch {
+      console.warn('[Mock] PPTX 解析接口不可用，使用 Mock 页面')
+    }
+
+    // 解析失败时使用 mock 页面
+    if (!pages.length) {
+      pages = Array.from({ length: 5 }, (_, i) => ({
+        previewUrl: makeMockSvg(`第 ${i+1} 页`, `从 ${f.name} 提取`, colors[i]),
+        annotation: '',
+        outputUrl: '',
+      }))
+    }
+
+    fullPages.value = pages
+    fullGenerated.value = false
+  } catch (err) {
+    console.error('[Full] 文件处理失败:', err)
+    // 最终兜底
+    const colors = ['#e0e7ff','#fce7f3','#ecfdf5','#fef3c7','#f1f5f9']
+    fullPages.value = Array.from({ length: 5 }, (_, i) => ({
+      previewUrl: makeMockSvg(`第 ${i+1} 页`, `从 ${f.name} 提取`, colors[i]),
+      annotation: '',
+      outputUrl: '',
+    }))
+    fullGenerated.value = false
+  } finally {
+    fullExtracting.value = false
+  }
 }
 
 async function handleFullGenerate() {

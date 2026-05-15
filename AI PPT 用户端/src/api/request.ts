@@ -11,7 +11,17 @@ const request: AxiosInstance = axios.create({
 // Request interceptor — attach token
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token')
+    // 读取 token：优先用户前端的，其次管理系统的 ACCESS_TOKEN
+    let token = localStorage.getItem('token')
+    if (!token) {
+      const admin = localStorage.getItem('ACCESS_TOKEN')
+      if (admin) {
+        try {
+          const parsed = JSON.parse(admin)
+          token = typeof parsed === 'object' ? (parsed.c || '') : String(parsed)
+        } catch { token = admin }
+      }
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -31,7 +41,7 @@ request.interceptors.response.use(
     // Token expired
     if (data.code === 401) {
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      window.location.href = '/admin/login?from=user'
       return Promise.reject(new Error('登录已过期'))
     }
     return Promise.reject(new Error(data.msg || '请求失败'))
