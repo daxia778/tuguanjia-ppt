@@ -1,0 +1,222 @@
+{
+  "theme_id": "birthday",
+  "theme_name": "生日庆祝",
+  "theme_name_en": "Birthday Celebration",
+  "version": "1.0.0",
+  "created_at": "2026-05-01T23:56:03.040063",
+  "style": "watercolor_illustration",
+  "color_palette": {
+    "primary": "#F48FB1",
+    "secondary": "#FFD54F",
+    "accent": "#4FC3F7",
+    "background_light": "#FFF8E1",
+    "background_dark": "#1A237E",
+    "text_dark": "#37474F",
+    "text_light": "#FFFFFF",
+    "gold": "#D4AF37"
+  },
+  "recommended_fonts": {
+    "title_cn": "站酷快乐体",
+    "title_fallback": "Microsoft YaHei",
+    "body_cn": "微软雅黑",
+    "title_en": "Pacifico",
+    "body_en": "Nunito"
+  },
+  "assets": [
+    {
+      "id": "bg_warm_watercolor",
+      "category": "backgrounds",
+      "filename": "bg_warm_watercolor.png",
+      "usage": "全页背景",
+      "placement": "铺满整页作为底层背景",
+      "description": "暖色水彩生日背景，粉金色调，中央留白区域用于放置文字",
+      "tags": [
+        "background",
+        "warm",
+        "watercolor",
+        "pastel",
+        "birthday"
+      ],
+      "size_spec": "1536x1024",
+      "status": "success",
+      "size_kb": 1873.9,
+      "path": "themes/birthday/backgrounds/bg_warm_watercolor.png"
+    },
+    {
+      "id": "bg_festive_dark",
+      "category": "backgrounds",
+      "filename": "bg_festive_dark.png",
+      "usage": "全页背景",
+      "placement": "铺满整页作为底层背景，适合白色/金色文字",
+      "description": "深蓝金箔生日背景，奢华感，适合正式场合生日PPT",
+      "tags": [
+        "background",
+        "dark",
+        "elegant",
+        "gold",
+        "luxury",
+        "birthday"
+      ],
+      "size_spec": "1536x1024",
+      "status": "success",
+      "size_kb": 1996.9,
+      "path": "themes/birthday/backgrounds/bg_festive_dark.png"
+    },
+    {
+      "id": "bg_cute_cartoon",
+      "category": "backgrounds",
+      "filename": "bg_cute_cartoon.png",
+      "usage": "全页背景",
+      "placement": "铺满整页作为底层背景，适合儿童/可爱风格",
+      "description": "可爱卡通生日背景，薄荷绿黄色调，顶部有小旗帜和气球装饰",
+      "tags": [
+        "background",
+        "cute",
+        "cartoon",
+        "kawaii",
+        "children",
+        "birthday"
+      ],
+      "size_spec": "1536x1024",
+      "status": "success",
+      "size_kb": 1182.7,
+      "path": "themes/birthday/backgrounds/bg_cute_cartoon.png"
+    },
+    {
+      "id": "deco_balloon_cluster",
+      "category": "decorations",
+      "filename": "deco_balloon_cluster.png",
+      "usage": "装饰元素",
+      "placement": "左上角或右上角，作为页面点缀",
+      "description": "一组彩色气球，带卷曲丝带，水彩风格",
+      "tags": [
+        "decoration",
+        "balloons",
+        "colorful",
+        "corner",
+        "birthday"
+      ],
+      "size_spec": "1024x1024",
+      "status": "success",
+      "size_kb": 1320.4,
+      "path": "themes/birthday/decorations/deco_balloon_cluster.png"
+    },
+    {
+      "id": "deco_birthday_cake",
+      "category": "decorations",
+      "filename": "deco_birthday_cake.png",
+      "usage": "装饰元素",
+      "placement": "页面左侧或右侧，作为视觉焦点",
+      "description": "三层生日蛋糕，带蜡烛和浆果装饰，水彩风格",
+      "tags": [
+        "decoration",
+        "cake",
+        "candles",
+        "centerpiece",
+        "birthday"
+      ],
+      "size_spec": "1024x1024",
+      "status": "success",
+      "size_kb": 1891.1,
+      "path": "themes/birthday/decorations/deco_birthday_cake.png"
+    },
+    {
+      "id": "deco_gift_boxes",
+      "category": "decorations",
+      "filename": "deco_gift_boxes.png",
+      "usage": "装饰元素",
+      "placement": "右下角或底部装饰",
+      "description": "三个精美礼盒，粉蓝金配色，水彩风格",
+      "tags": [
+        "decoration",
+        "gifts",
+        "presents",
+        "bottom",
+        "birthday"
+      ],
+      "size_spec": "1024x1024",
+      "status": "success",
+      "size_kb": 2004.6,
+      "path": "themes/birthday/decorations/deco_gift_boxes.png"
+    },
+    {
+      "id": "deco_confetti_scatter",
+      "category": "decorations",
+      "filename": "deco_confetti_scatter.png",
+      "usage": "装饰元素（叠加层）",
+      "placement": "覆盖在整页上方作为氛围叠加层，需降低不透明度",
+      "description": "散落的五彩纸屑和彩带，可作为叠加装饰层",
+      "tags": [
+        "decoration",
+        "confetti",
+        "overlay",
+        "atmosphere",
+        "birthday"
+      ],
+      "size_spec": "1536x1024",
+      "status": "success",
+      "size_kb": 1108.8,
+      "path": "themes/birthday/decorations/deco_confetti_scatter.png"
+    },
+    {
+      "id": "deco_bunting_flags",
+      "category": "decorations",
+      "filename": "deco_bunting_flags.png",
+      "usage": "装饰元素",
+      "placement": "页面顶部横向放置，作为页眉装饰",
+      "description": "彩色三角旗帜横幅，水彩手绘风格",
+      "tags": [
+        "decoration",
+        "bunting",
+        "flags",
+        "top",
+        "header",
+        "birthday"
+      ],
+      "size_spec": "1536x1024",
+      "status": "success",
+      "size_kb": 1036.3,
+      "path": "themes/birthday/decorations/deco_bunting_flags.png"
+    },
+    {
+      "id": "frame_ribbon_banner",
+      "category": "title_frames",
+      "filename": "frame_ribbon_banner.png",
+      "usage": "标题框",
+      "placement": "页面顶部或中央，内部放置标题文字",
+      "description": "金色绶带横幅标题框，中间空白区域放文字",
+      "tags": [
+        "frame",
+        "title",
+        "ribbon",
+        "gold",
+        "banner",
+        "birthday"
+      ],
+      "size_spec": "1536x1024",
+      "status": "success",
+      "size_kb": 1791.1,
+      "path": "themes/birthday/title_frames/frame_ribbon_banner.png"
+    },
+    {
+      "id": "frame_floral_wreath",
+      "category": "title_frames",
+      "filename": "frame_floral_wreath.png",
+      "usage": "标题框",
+      "placement": "页面中央，内部放置祝福语或标题",
+      "description": "花卉花环圆形标题框，水彩玫瑰和牡丹，中间留白",
+      "tags": [
+        "frame",
+        "title",
+        "floral",
+        "wreath",
+        "circular",
+        "birthday"
+      ],
+      "size_spec": "1024x1024",
+      "status": "success",
+      "size_kb": 1712.2,
+      "path": "themes/birthday/title_frames/frame_floral_wreath.png"
+    }
+  ]
+}
