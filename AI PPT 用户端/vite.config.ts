@@ -28,6 +28,16 @@ export default defineConfig({
         changeOrigin: true,
         ws: true, // 代理 WebSocket（Vite HMR）
       },
+      // ── Layer Studio 引擎代理 ──
+      '/layer-api': {
+        target: 'http://localhost:5555',
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/layer-api/, '/api'),
+      },
+      '/workspace': {
+        target: 'http://localhost:5555',
+        changeOrigin: true,
+      },
     },
   },
 })
