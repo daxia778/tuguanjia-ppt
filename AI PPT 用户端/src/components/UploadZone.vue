@@ -5,7 +5,7 @@
     @dragover.prevent="isDragover = true"
     @dragleave.prevent="isDragover = false"
     @drop.prevent="handleDrop"
-    @click="triggerInput"
+    @click="onZoneClick"
   >
     <input ref="fileInput" type="file" :accept="accept" multiple hidden @change="handleFileChange" />
 
@@ -20,7 +20,7 @@
 
     <template v-else>
       <div class="file-grid">
-        <div class="file-thumb" v-for="(f, i) in files" :key="i">
+        <div class="file-thumb" v-for="(f, i) in files" :key="i" @click.stop="openPreview(i)">
           <img :src="f.preview" alt="" />
           <button class="file-remove" @click.stop="removeFile(i)" title="移除">
             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -32,6 +32,26 @@
       </div>
     </template>
   </div>
+
+  <!-- 图片预览 Lightbox -->
+  <Teleport to="body">
+    <transition name="lightbox-fade">
+      <div v-if="previewIdx !== null" class="lightbox-overlay" @click="closePreview">
+        <button class="lightbox-close" @click.stop="closePreview">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <!-- 左右切换 -->
+        <button v-if="files.length > 1 && previewIdx > 0" class="lightbox-nav lightbox-prev" @click.stop="previewIdx!--">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <img :src="files[previewIdx!]?.preview" class="lightbox-img" @click.stop />
+        <button v-if="files.length > 1 && previewIdx! < files.length - 1" class="lightbox-nav lightbox-next" @click.stop="previewIdx!++">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="lightbox-counter">{{ previewIdx! + 1 }} / {{ files.length }}</div>
+      </div>
+    </transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -48,8 +68,24 @@ const emit = defineEmits<{ (e: 'update', files: File[]): void }>()
 const fileInput = ref<HTMLInputElement | null>(null)
 const isDragover = ref(false)
 const files = ref<UploadFile[]>([])
+const previewIdx = ref<number | null>(null)
 
 function triggerInput() { fileInput.value?.click() }
+
+/** 点击容器：没有文件时打开文件选择器，有文件时不做任何事 */
+function onZoneClick() {
+  if (files.value.length === 0) {
+    triggerInput()
+  }
+}
+
+function openPreview(idx: number) {
+  previewIdx.value = idx
+}
+
+function closePreview() {
+  previewIdx.value = null
+}
 
 function addFiles(newFiles: FileList | null) {
   if (!newFiles) return
@@ -75,6 +111,12 @@ function handleFileChange(e: Event) {
 function removeFile(idx: number) {
   URL.revokeObjectURL(files.value[idx].preview)
   files.value.splice(idx, 1)
+  // 如果正在预览被删除的图片，关闭预览
+  if (previewIdx.value !== null) {
+    if (previewIdx.value >= files.value.length) {
+      previewIdx.value = files.value.length > 0 ? files.value.length - 1 : null
+    }
+  }
   emit('update', files.value.map(f => f.file))
 }
 
@@ -96,7 +138,7 @@ defineExpose({ files })
   border-color: var(--brand-orange);
   background: rgba(251, 84, 43, 0.04);
 }
-.upload-zone.has-files { padding: var(--space-4); text-align: left; }
+.upload-zone.has-files { padding: var(--space-4); text-align: left; cursor: default; }
 
 .upload-icon {
   width: 56px; height: 56px; margin: 0 auto var(--space-3);
@@ -113,7 +155,9 @@ defineExpose({ files })
 .file-thumb {
   width: 72px; height: 72px; border-radius: var(--radius-sm);
   overflow: hidden; position: relative; border: 1px solid var(--border-color);
+  cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
 }
+.file-thumb:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 .file-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .file-remove {
   position: absolute; top: 2px; right: 2px;
@@ -127,7 +171,49 @@ defineExpose({ files })
   width: 72px; height: 72px; border-radius: var(--radius-sm);
   border: 2px dashed var(--border-color); color: var(--text-muted);
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.15s;
+  transition: all 0.15s; cursor: pointer;
 }
 .file-add:hover { border-color: var(--brand-orange); color: var(--brand-orange); }
+
+/* ── Lightbox ── */
+.lightbox-overlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+.lightbox-img {
+  max-width: 90vw; max-height: 85vh;
+  object-fit: contain; border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+.lightbox-close {
+  position: absolute; top: 20px; right: 20px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); color: white;
+  display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer; transition: background 0.2s;
+}
+.lightbox-close:hover { background: rgba(255,255,255,0.25); }
+.lightbox-nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); color: white;
+  display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer; transition: background 0.2s;
+}
+.lightbox-nav:hover { background: rgba(255,255,255,0.25); }
+.lightbox-prev { left: 20px; }
+.lightbox-next { right: 20px; }
+.lightbox-counter {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.6); font-size: 14px; font-weight: 600;
+}
+
+.lightbox-fade-enter-active { transition: opacity 0.25s ease; }
+.lightbox-fade-leave-active { transition: opacity 0.2s ease; }
+.lightbox-fade-enter-from,
+.lightbox-fade-leave-to { opacity: 0; }
 </style>
