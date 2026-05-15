@@ -87,7 +87,7 @@ export const useUserStore = defineStore('user', () => {
         id: isAdminLogin ? 0 : 1,
         nickname: isAdminLogin ? 'admin' : (email.split('@')[0] || 'user'),
         email: isAdminLogin ? 'admin@system.local' : email,
-        points: isAdminLogin ? 999999 : 200,
+        points: isAdminLogin ? 999999 : 500,
         totalEarned: isAdminLogin ? 999999 : 500,
         totalSpent: 0,
         roles: isAdminLogin ? ['admin', 'super_admin'] : ['user'],
@@ -124,7 +124,7 @@ export const useUserStore = defineStore('user', () => {
       // 后端不可用时：如果有 mock token 则保留 mock 用户
       if (token.value.startsWith('mock-')) {
         if (!userInfo.value) {
-          setUserInfo({ id: 1, nickname: 'admin', email: 'admin@test.com', points: 200, totalEarned: 500, totalSpent: 300 })
+          setUserInfo({ id: 1, nickname: 'admin', email: 'admin@test.com', points: 500, totalEarned: 500, totalSpent: 0 })
         }
       } else {
         clearAuth()
