@@ -28,14 +28,7 @@
           <div class="modern-card input-card">
             <div class="card-label"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 创作指令 <span class="required">*</span></div>
             <textarea v-model="prompt" class="input-field prompt-area" placeholder="描述这一页的内容，如：封面页，标题为2026年AI行业报告..." rows="5" id="ppt-prompt"></textarea>
-            <div class="option-row">
-              <label class="option-label">视觉风格</label>
-              <div class="style-pills">
-                <button v-for="s in styleOptions" :key="s.value" type="button" class="style-pill" :class="{ active: style === s.value }" @click="style = s.value">
-                  <span class="style-dot" :style="{ background: s.color }"></span>{{ s.label }}
-                </button>
-              </div>
-            </div>
+
             <div class="submit-row">
               <div class="cost-info"><span class="cost-badge"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 2v7.5"/><path d="m19 5-5.23 5.23"/></svg> 10 积分</span><span class="cost-balance">余额 {{ userStore.points }}</span></div>
               <button class="btn btn-primary btn-lg" :disabled="sGenerating || !prompt" @click="handleSingleGenerate" id="generate-submit">
@@ -68,11 +61,7 @@
               <span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:3px"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>{{ fullFileName }}</span>
               <button class="ffb-clear" @click="clearFullPages">更换</button>
             </div>
-            <div class="style-pills">
-              <button v-for="s in styleOptions" :key="s.value" type="button" class="style-pill" :class="{ active: style === s.value }" @click="style = s.value">
-                <span class="style-dot" :style="{ background: s.color }"></span>{{ s.label }}
-              </button>
-            </div>
+
           </div>
           <div class="full-actions-right">
             <span class="cost-badge"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 2v7.5"/><path d="m19 5-5.23 5.23"/></svg> {{ fullPages.length * 10 }} 积分</span>
