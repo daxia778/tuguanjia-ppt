@@ -22,7 +22,7 @@
 
         <!-- Navigation -->
         <nav class="header-nav" id="main-nav">
-          <router-link to="/" class="nav-link" active-class="active" :class="{ active: $route.path === '/' }">首页</router-link>
+          <router-link to="/" class="nav-link" exact-active-class="active">首页</router-link>
           <router-link to="/generate" class="nav-link" active-class="active">创建</router-link>
           <router-link to="/history" class="nav-link" active-class="active">历史</router-link>
         </nav>
