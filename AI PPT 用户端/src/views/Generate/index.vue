@@ -39,7 +39,25 @@
           </div>
         </div>
         <div class="preview-col">
-          <ResultPreview ref="sPreviewRef" :state="sPreviewState" :progress="sProgress" :progressText="sProgressText" :slides="sSlides" :resultTitle="prompt?.slice(0,30)" :styleName="currentStyleLabel" :theme="style" :errorMsg="sError" @download="handleSingleDownload" @reset="resetSingle" @retry="sError=''" />
+          <ResultPreview ref="sPreviewRef"
+            :state="sPreviewState"
+            :progress="sProgress"
+            :progressText="sProgressText"
+            :stepTitle="sStepTitle"
+            :stepDetail="sStepDetail"
+            :elapsedSec="sElapsed"
+            :completedLayers="sLayers"
+            :logMessages="sLogs"
+            :resultTitle="prompt?.slice(0,30)"
+            :styleName="currentStyleLabel"
+            :pptxFileUrl="sPptxUrl"
+            :pptxSizeKb="sPptxSizeKb"
+            :originalImageUrl="sOriginalImage"
+            :errorMsg="sError"
+            @download="handleSingleDownload"
+            @reset="resetSingle"
+            @retry="sError=''"
+          />
         </div>
       </div>
 
@@ -84,8 +102,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { generatePptx } from '@/utils/pptx'
-import { uploadFiles } from '@/api/upload'
-import * as pptApi from '@/api/ppt'
 import * as layerApi from '@/api/layer'
 import gsap from 'gsap'
 import UploadZone from '@/components/UploadZone.vue'
@@ -125,139 +141,149 @@ onMounted(() => {
 onUnmounted(() => { ctx?.revert() })
 
 // ═══════════════════════════════════
-//  SINGLE PAGE MODE
+//  SINGLE PAGE MODE — Layer Studio 全管线
 // ═══════════════════════════════════
 const prompt = ref('')
 const sGenerating = ref(false); const sGenerated = ref(false)
 const sProgress = ref(0); const sError = ref('')
-const sTask = ref<any>(null)
 const sPreviewRef = ref<any>(null)
 const uploadRef = ref(null)
 const uploadedImgs = ref<File[]>([])
 
-const sSlides = computed(() => sTask.value?.slides?.slides || [])
+// 管线进度状态
+const sStepTitle = ref('')
+const sStepDetail = ref('')
+const sElapsed = ref(0)
+const sLayers = ref<{ url: string; label: string }[]>([])
+const sLogs = ref<string[]>([])
+const sPptxUrl = ref('')
+const sPptxSizeKb = ref(0)
+const sOriginalImage = ref('')
+
+let elapsedTimer: ReturnType<typeof setInterval> | null = null
+
 const sProgressText = computed(() => `正在生成... ${Math.round(sProgress.value)}%`)
 const sPreviewState = computed(() => {
   if (sGenerating.value) return 'loading'
-  if (sGenerated.value && sSlides.value.length) return 'done'
+  if (sGenerated.value) return 'done'
   if (sError.value) return 'error'
   return 'idle'
 })
 
 function onImgUpdate(files: File[]) { uploadedImgs.value = files }
 
+// SSE step → 进度百分比映射
+const STEP_PROGRESS: Record<string, number> = {
+  'step1': 5,
+  '0/5': 12, '1/5': 25, '2/5': 40,
+  '3/5': 55, '4/5': 70, '5/5': 82,
+  'extract': 90, 'pptx': 95, 'diag': 88,
+}
+
+// 图层名称映射
+const LAYER_LABELS: Record<string, string> = {
+  'original': '原图',
+  'background': '背景',
+  'foreground': '前景',
+  'foreground_elem': '元素',
+  'foreground_text': '文字',
+  'foreground_shape': '形状',
+  'foreground_graphic': '图形',
+}
+
 async function handleSingleGenerate() {
   if (!prompt.value) return
-  sGenerating.value = true; sProgress.value = 0; sGenerated.value = false; sError.value = ''; sTask.value = null
-  if (sPreviewRef.value) sPreviewRef.value.current = 0
+  sGenerating.value = true
+  sProgress.value = 0
+  sGenerated.value = false
+  sError.value = ''
+  sStepTitle.value = ''
+  sStepDetail.value = ''
+  sElapsed.value = 0
+  sLayers.value = []
+  sLogs.value = []
+  sPptxUrl.value = ''
+  sPptxSizeKb.value = 0
+  sOriginalImage.value = ''
+
+  // 计时器
+  const startTime = Date.now()
+  elapsedTimer = setInterval(() => {
+    sElapsed.value = Math.floor((Date.now() - startTime) / 1000)
+  }, 1000)
 
   try {
-    // ── Step 1: 上传参考图片到 Layer Studio ──
-    let refImageUrl = ''
-    if (uploadedImgs.value.length) {
-      gsap.to(sProgress, { value: 15, duration: 1, ease: 'power1.out' })
-      try {
-        const res = await layerApi.uploadImage(uploadedImgs.value[0])
-        refImageUrl = res.image
-        console.log('[Layer] 参考图已上传:', refImageUrl)
-      } catch {
-        // Layer Studio 不可用时用本地 URL
-        refImageUrl = URL.createObjectURL(uploadedImgs.value[0])
+    const result = await layerApi.runFullPipeline(prompt.value, (event) => {
+      // 更新进度百分比
+      if (event.step && STEP_PROGRESS[event.step] !== undefined) {
+        const target = STEP_PROGRESS[event.step]
+        if (target > sProgress.value) {
+          sProgress.value = target
+        }
       }
-    }
 
-    // ── Step 2: 调用 Layer Studio 生图 ──
-    gsap.to(sProgress, { value: 30, duration: 1, ease: 'power1.out' })
-    let generatedImageUrl = ''
-    let usedEngine = 'mock'
+      // 更新步骤信息
+      if (event.type === 'phase') {
+        sStepTitle.value = event.message || ''
+        sStepDetail.value = event.detail || ''
+      }
 
-    try {
-      // 尝试 Layer Studio AI 生图
-      gsap.to(sProgress, { value: 80, duration: 15, ease: 'power1.inOut' })
-      const result = await layerApi.generateImage(prompt.value)
-      generatedImageUrl = result.image // e.g. /workspace/01_原图_xxx.png
-      usedEngine = 'layer-studio'
-      console.log('[Layer] AI 生图成功:', generatedImageUrl, result.size)
-    } catch (layerErr) {
-      console.warn('[Layer] Layer Studio 不可用，尝试 Spring Boot 后端:', layerErr)
+      // 记录日志
+      if (event.message) {
+        sLogs.value.push(event.message)
+      }
 
-      // 尝试 Spring Boot 后端
-      try {
-        gsap.to(sProgress, { value: 50, duration: 1, ease: 'power1.out' })
-        const res = await pptApi.createTask({
-          title: prompt.value.slice(0, 60),
-          description: prompt.value,
-          style: style.value,
-          pages: 1,
+      // 记录已完成图层
+      if (event.type === 'layer_done' && event.layer && event.url) {
+        // 记录原图
+        if (event.layer === 'original') {
+          sOriginalImage.value = event.url
+        }
+        sLayers.value.push({
+          url: event.url,
+          label: LAYER_LABELS[event.layer] || event.layer,
         })
-        const taskNo = (res as any)?.taskNo || (res as any)
-
-        // 轮询任务状态
-        gsap.to(sProgress, { value: 90, duration: 8, ease: 'power1.inOut' })
-        let task: pptApi.TaskVO | null = null
-        for (let i = 0; i < 60; i++) {
-          await new Promise(r => setTimeout(r, 1000))
-          task = await pptApi.getTaskStatus(taskNo)
-          if (task.status === 2) break
-          if (task.status === 3) throw new Error(task.errorMsg || '生成失败')
-        }
-        if (task?.status === 2 && task.slides) {
-          sTask.value = { slides: task.slides, pageCount: task.pageCount, style: style.value }
-          usedEngine = 'spring-boot'
-        }
-      } catch {
-        console.warn('[Mock] Spring Boot 也不可用，使用 Mock')
       }
-    }
+    })
 
-    // ── Step 3: 组装结果 ──
-    gsap.to(sProgress, { value: 100, duration: 0.5 })
+    // 管线完成
+    sProgress.value = 100
+    sPptxUrl.value = result.pptxFile
+    sPptxSizeKb.value = result.sizeKb
+    if (result.originalImage) sOriginalImage.value = result.originalImage
 
-    if (usedEngine === 'layer-studio') {
-      // Layer Studio 生成的是图片，嵌入到 slide 中
-      sTask.value = {
-        slides: { title: prompt.value.slice(0,30), slides: [{
-          title: prompt.value.slice(0,30),
-          content: [],
-          notes: '由 Layer Studio AI 引擎生成',
-          imageUrl: generatedImageUrl,
-        }]},
-        pageCount: 1, style: style.value
-      }
-    } else if (usedEngine === 'mock') {
-      // Mock 回退
-      await new Promise(r => setTimeout(r, 1500))
-      sTask.value = {
-        slides: { title: prompt.value.slice(0,30), slides: [{
-          title: prompt.value.slice(0,30),
-          content: ['AI 驱动的智能内容生成','精准排版与配色优化','一键导出原生 PPTX 格式'],
-          notes: '由 AI 自动生成',
-          imageUrl: refImageUrl || null,
-        }]},
-        pageCount: 1, style: style.value
-      }
-    }
-    // spring-boot case already set sTask above
-
-    // ── Step 4: 扣减积分 ──
+    // 扣减积分
     if (userStore.userInfo) {
       userStore.userInfo.points = Math.max(0, (userStore.userInfo.points || 0) - 10)
     }
 
     sGenerated.value = true
   } catch (err: any) {
-    sError.value = err?.message || '生成失败，请重试'
-    console.error('[Generate] 生成失败:', err)
+    sError.value = err?.message || '生成失败，请确保 Layer Studio 已启动'
+    console.error('[Generate] 管线失败:', err)
   } finally {
     sGenerating.value = false
+    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null }
   }
 }
 
 function handleSingleDownload() {
-  if (!sTask.value?.slides) return
-  generatePptx(sTask.value.slides, style.value)
+  // PPTX 由 Layer Studio 生成，直接通过 URL 下载
+  if (sPptxUrl.value) {
+    const a = document.createElement('a')
+    a.href = sPptxUrl.value
+    a.download = `${prompt.value.slice(0, 20) || 'output'}.pptx`
+    a.click()
+  }
 }
-function resetSingle() { sGenerated.value = false; prompt.value = ''; sError.value = ''; sTask.value = null; sProgress.value = 0 }
+
+function resetSingle() {
+  sGenerated.value = false; prompt.value = ''; sError.value = ''
+  sProgress.value = 0; sStepTitle.value = ''; sStepDetail.value = ''
+  sElapsed.value = 0; sLayers.value = []; sLogs.value = []
+  sPptxUrl.value = ''; sPptxSizeKb.value = 0; sOriginalImage.value = ''
+  if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null }
+}
 
 // ═══════════════════════════════════
 //  FULL SET MODE
