@@ -62,7 +62,14 @@ router.beforeEach(async (to, from, next) => {
   loadStart()
   if (getAccessToken()) {
     if (to.path === '/login') {
-      next({ path: '/' })
+      // 来自用户前端的登录：保留在 login 页面显示角色选择弹窗
+      const fromUser = to.query.from === 'user' ||
+        new URLSearchParams(window.location.search).get('from') === 'user'
+      if (fromUser) {
+        next()
+      } else {
+        next({ path: '/' })
+      }
     } else {
       const dictStore = useDictStoreWithOut()
       const userStore = useUserStoreWithOut()

@@ -361,13 +361,18 @@ const handleLogin = async (params: any) => {
 // ── 角色选择弹窗事件 ──
 const handleGoAdmin = () => {
   showRolePicker.value = false
-  push({ path: '/' })
+  // 使用 window.location 导航到管理面板首页（避免被 permission guard 二次拦截）
+  window.location.href = '/admin/'
 }
 
 const handleGoUser = (redirectPath: string) => {
   showRolePicker.value = false
-  // 跳转到用户前端（同端口代理下直接用根路径）
-  window.location.href = redirectPath || '/'
+  // 跳转到用户前端（确保以 / 开头，不带 /admin 前缀）
+  let target = redirectPath || '/'
+  if (target.startsWith('/admin')) {
+    target = target.replace(/^\/admin/, '') || '/'
+  }
+  window.location.href = target
 }
 
 // 社交登录

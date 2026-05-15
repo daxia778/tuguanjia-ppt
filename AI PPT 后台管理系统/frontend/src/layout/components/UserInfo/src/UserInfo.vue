@@ -52,6 +52,11 @@ const toProfile = async () => {
 const toDocument = () => {
   window.open('https://doc.iocoder.cn/')
 }
+
+/** 切换到用户前端 */
+const goToFrontend = () => {
+  window.location.href = '/'
+}
 </script>
 
 <template>
@@ -67,6 +72,10 @@ const toDocument = () => {
         <ElDropdownItem>
           <Icon icon="ep:tools" />
           <div @click="toProfile">{{ t('common.profile') }}</div>
+        </ElDropdownItem>
+        <ElDropdownItem divided @click="goToFrontend">
+          <Icon icon="ep:monitor" />
+          <div>切换到前台</div>
         </ElDropdownItem>
         <ElDropdownItem divided @click="loginOut">
           <Icon icon="ep:switch-button" />
